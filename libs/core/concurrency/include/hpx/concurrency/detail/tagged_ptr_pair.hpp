@@ -68,14 +68,16 @@ namespace boost { namespace lockfree {
         static constexpr std::size_t right_ptr_index = 1;
         static constexpr compressed_ptr_t ptr_mask = 0xffffffffffff;
 
-        static Left* extract_left_ptr(volatile compressed_ptr_pair_t const& i)
+        static Left* extract_left_ptr(
+            volatile compressed_ptr_pair_t const& i) noexcept
         {
             cast_unit cu;
             cu.value = i;
             return reinterpret_cast<Left*>(cu.ptrs[left_ptr_index] & ptr_mask);
         }
 
-        static Right* extract_right_ptr(volatile compressed_ptr_pair_t const& i)
+        static Right* extract_right_ptr(
+            volatile compressed_ptr_pair_t const& i) noexcept
         {
             cast_unit cu;
             cu.value = i;
@@ -83,14 +85,16 @@ namespace boost { namespace lockfree {
                 cu.ptrs[right_ptr_index] & ptr_mask);
         }
 
-        static tag_t extract_left_tag(volatile compressed_ptr_pair_t const& i)
+        static tag_t extract_left_tag(
+            volatile compressed_ptr_pair_t const& i) noexcept
         {
             cast_unit cu;
             cu.value = i;
             return cu.tags[left_tag_index];
         }
 
-        static tag_t extract_right_tag(volatile compressed_ptr_pair_t const& i)
+        static tag_t extract_right_tag(
+            volatile compressed_ptr_pair_t const& i) noexcept
         {
             cast_unit cu;
             cu.value = i;
@@ -99,7 +103,7 @@ namespace boost { namespace lockfree {
 
         template <typename IntegralL, typename IntegralR>
         static compressed_ptr_pair_t pack_ptr_pair(
-            Left* lptr, Right* rptr, IntegralL ltag, IntegralR rtag)
+            Left* lptr, Right* rptr, IntegralL ltag, IntegralR rtag) noexcept
         {
             cast_unit ret;
             ret.ptrs[left_ptr_index] = reinterpret_cast<compressed_ptr_t>(lptr);
@@ -117,13 +121,14 @@ namespace boost { namespace lockfree {
         }
 
         template <typename IntegralL>
-        tagged_ptr_pair(Left* lptr, Right* rptr, IntegralL ltag)
+        tagged_ptr_pair(Left* lptr, Right* rptr, IntegralL ltag) noexcept
           : pair_(pack_ptr_pair(lptr, rptr, ltag, 0))
         {
         }
 
         template <typename IntegralL, typename IntegralR>
-        tagged_ptr_pair(Left* lptr, Right* rptr, IntegralL ltag, IntegralR rtag)
+        tagged_ptr_pair(
+            Left* lptr, Right* rptr, IntegralL ltag, IntegralR rtag) noexcept
           : pair_(pack_ptr_pair(lptr, rptr, ltag, rtag))
         {
         }
@@ -131,7 +136,7 @@ namespace boost { namespace lockfree {
         /** copy constructors */
         tagged_ptr_pair(tagged_ptr_pair const& p) = default;
 
-        tagged_ptr_pair(Left* lptr, Right* rptr)
+        tagged_ptr_pair(Left* lptr, Right* rptr) noexcept
           : pair_(pack_ptr_pair(lptr, rptr, 0, 0))
         {
         }
@@ -140,36 +145,38 @@ namespace boost { namespace lockfree {
         /* @{ */
         void operator=(tagged_ptr_pair const& p) = default;
 
-        void set(Left* lptr, Right* rptr)
+        void set(Left* lptr, Right* rptr) noexcept
         {
             pair_ = pack_ptr_pair(lptr, rptr, 0, 0);
         }
 
-        void reset(Left* lptr, Right* rptr)
+        void reset(Left* lptr, Right* rptr) noexcept
         {
             set(lptr, rptr, 0, 0);
         }
 
         template <typename IntegralL>
-        void set(Left* lptr, Right* rptr, IntegralL ltag)
+        void set(Left* lptr, Right* rptr, IntegralL ltag) noexcept
         {
             pair_ = pack_ptr_pair(lptr, rptr, ltag, 0);
         }
 
         template <typename IntegralL, typename IntegralR>
-        void set(Left* lptr, Right* rptr, IntegralL ltag, IntegralR rtag)
+        void set(
+            Left* lptr, Right* rptr, IntegralL ltag, IntegralR rtag) noexcept
         {
             pair_ = pack_ptr_pair(lptr, rptr, ltag, rtag);
         }
 
         template <typename IntegralL>
-        void reset(Left* lptr, Right* rptr, IntegralL ltag)
+        void reset(Left* lptr, Right* rptr, IntegralL ltag) noexcept
         {
             set(lptr, rptr, ltag, 0);
         }
 
         template <typename IntegralL, typename IntegralR>
-        void reset(Left* lptr, Right* rptr, IntegralL ltag, IntegralR rtag)
+        void reset(
+            Left* lptr, Right* rptr, IntegralL ltag, IntegralR rtag) noexcept
         {
             set(lptr, rptr, ltag, rtag);
         }
@@ -177,12 +184,12 @@ namespace boost { namespace lockfree {
 
         /** comparing semantics */
         /* @{ */
-        bool operator==(volatile tagged_ptr_pair const& p) const
+        bool operator==(volatile tagged_ptr_pair const& p) const noexcept
         {
             return (pair_ == p.pair_);
         }
 
-        bool operator!=(volatile tagged_ptr_pair const& p) const
+        bool operator!=(volatile tagged_ptr_pair const& p) const noexcept
         {
             return !operator==(p);
         }
@@ -190,17 +197,17 @@ namespace boost { namespace lockfree {
 
         /** pointer access */
         /* @{ */
-        Left* get_left_ptr() const volatile
+        Left* get_left_ptr() const volatile noexcept
         {
             return extract_left_ptr(pair_);
         }
 
-        Right* get_right_ptr() const volatile
+        Right* get_right_ptr() const volatile noexcept
         {
             return extract_right_ptr(pair_);
         }
 
-        void set_left_ptr(Left* lptr) volatile
+        void set_left_ptr(Left* lptr) volatile noexcept
         {
             Right* rptr = get_right_ptr();
             tag_t ltag = get_left_tag();
@@ -208,7 +215,7 @@ namespace boost { namespace lockfree {
             pair_ = pack_ptr_pair(lptr, rptr, ltag, rtag);
         }
 
-        void set_right_ptr(Right* rptr) volatile
+        void set_right_ptr(Right* rptr) volatile noexcept
         {
             Left* lptr = get_left_ptr();
             tag_t ltag = get_left_tag();
@@ -219,18 +226,18 @@ namespace boost { namespace lockfree {
 
         /** tag access */
         /* @{ */
-        tag_t get_left_tag() const volatile
+        tag_t get_left_tag() const volatile noexcept
         {
             return extract_left_tag(pair_);
         }
 
-        tag_t get_right_tag() const volatile
+        tag_t get_right_tag() const volatile noexcept
         {
             return extract_right_tag(pair_);
         }
 
         template <typename Integral>
-        void set_left_tag(Integral ltag) volatile
+        void set_left_tag(Integral ltag) volatile noexcept
         {
             Left* lptr = get_left_ptr();
             Right* rptr = get_right_ptr();
@@ -239,7 +246,7 @@ namespace boost { namespace lockfree {
         }
 
         template <typename Integral>
-        void set_right_tag(Integral rtag) volatile
+        void set_right_tag(Integral rtag) volatile noexcept
         {
             Left* lptr = get_left_ptr();
             Right* rptr = get_right_ptr();
@@ -250,7 +257,7 @@ namespace boost { namespace lockfree {
 
         /** smart pointer support  */
         /* @{ */
-        operator bool() const
+        operator bool() const noexcept
         {
             return (get_left_ptr() != 0) && (get_right_ptr() != 0);
         }
@@ -265,12 +272,12 @@ namespace boost { namespace lockfree {
         std::uint64_t left;
         std::uint64_t right;
 
-        bool operator==(volatile uint128_type const& rhs) const
+        bool operator==(volatile uint128_type const& rhs) const noexcept
         {
             return (left == rhs.left) && (right == rhs.right);
         }
 
-        bool operator!=(volatile uint128_type const& rhs) const
+        bool operator!=(volatile uint128_type const& rhs) const noexcept
         {
             return !(*this == rhs);
         }
@@ -293,17 +300,20 @@ namespace boost { namespace lockfree {
         static constexpr std::size_t right_tag_index = 7;
         static constexpr compressed_ptr_t ptr_mask = 0xffffffffffff;
 
-        static Left* extract_left_ptr(volatile compressed_ptr_pair_t const& i)
+        static Left* extract_left_ptr(
+            volatile compressed_ptr_pair_t const& i) noexcept
         {
             return reinterpret_cast<Left*>(i.left & ptr_mask);
         }
 
-        static Right* extract_right_ptr(volatile compressed_ptr_pair_t const& i)
+        static Right* extract_right_ptr(
+            volatile compressed_ptr_pair_t const& i) noexcept
         {
             return reinterpret_cast<Right*>(i.right & ptr_mask);
         }
 
-        static tag_t extract_left_tag(volatile compressed_ptr_pair_t const& i)
+        static tag_t extract_left_tag(
+            volatile compressed_ptr_pair_t const& i) noexcept
         {
             cast_unit cu;
             cu.value.left = i.left;
@@ -311,7 +321,8 @@ namespace boost { namespace lockfree {
             return cu.tags[left_tag_index];
         }
 
-        static tag_t extract_right_tag(volatile compressed_ptr_pair_t const& i)
+        static tag_t extract_right_tag(
+            volatile compressed_ptr_pair_t const& i) noexcept
         {
             cast_unit cu;
             cu.value.left = i.left;
@@ -321,7 +332,7 @@ namespace boost { namespace lockfree {
 
         template <typename IntegralL, typename IntegralR>
         static void pack_ptr_pair(compressed_ptr_pair_t& pair, Left* lptr,
-            Right* rptr, IntegralL ltag, IntegralR rtag)
+            Right* rptr, IntegralL ltag, IntegralR rtag) noexcept
         {
             cast_unit ret;
             ret.value.left = reinterpret_cast<compressed_ptr_t>(lptr);
@@ -339,13 +350,14 @@ namespace boost { namespace lockfree {
         }
 
         template <typename IntegralL>
-        tagged_ptr_pair(Left* lptr, Right* rptr, IntegralL ltag)
+        tagged_ptr_pair(Left* lptr, Right* rptr, IntegralL ltag) noexcept
         {
             pack_ptr_pair(pair_, lptr, rptr, ltag, 0);
         }
 
         template <typename IntegralL, typename IntegralR>
-        tagged_ptr_pair(Left* lptr, Right* rptr, IntegralL ltag, IntegralR rtag)
+        tagged_ptr_pair(
+            Left* lptr, Right* rptr, IntegralL ltag, IntegralR rtag) noexcept
         {
             pack_ptr_pair(pair_, lptr, rptr, ltag, rtag);
         }
@@ -353,7 +365,7 @@ namespace boost { namespace lockfree {
         /** copy constructors */
         tagged_ptr_pair(tagged_ptr_pair const& p) = default;
 
-        tagged_ptr_pair(Left* lptr, Right* rptr)
+        tagged_ptr_pair(Left* lptr, Right* rptr) noexcept
         {
             pack_ptr_pair(pair_, lptr, rptr, 0, 0);
         }
@@ -362,36 +374,38 @@ namespace boost { namespace lockfree {
         /* @{ */
         tagged_ptr_pair& operator=(tagged_ptr_pair const& p) = default;
 
-        void set(Left* lptr, Right* rptr)
+        void set(Left* lptr, Right* rptr) noexcept
         {
             pack_ptr_pair(pair_, lptr, rptr, 0, 0);
         }
 
-        void reset(Left* lptr, Right* rptr)
+        void reset(Left* lptr, Right* rptr) noexcept
         {
             set(lptr, rptr, 0, 0);
         }
 
         template <typename IntegralL>
-        void set(Left* lptr, Right* rptr, IntegralL ltag)
+        void set(Left* lptr, Right* rptr, IntegralL ltag) noexcept
         {
             pack_ptr_pair(pair_, lptr, rptr, ltag, 0);
         }
 
         template <typename IntegralL, typename IntegralR>
-        void set(Left* lptr, Right* rptr, IntegralL ltag, IntegralR rtag)
+        void set(
+            Left* lptr, Right* rptr, IntegralL ltag, IntegralR rtag) noexcept
         {
             pack_ptr_pair(pair_, lptr, rptr, ltag, rtag);
         }
 
         template <typename IntegralL>
-        void reset(Left* lptr, Right* rptr, IntegralL ltag)
+        void reset(Left* lptr, Right* rptr, IntegralL ltag) noexcept
         {
             set(lptr, rptr, ltag, 0);
         }
 
         template <typename IntegralL, typename IntegralR>
-        void reset(Left* lptr, Right* rptr, IntegralL ltag, IntegralR rtag)
+        void reset(
+            Left* lptr, Right* rptr, IntegralL ltag, IntegralR rtag) noexcept
         {
             set(lptr, rptr, ltag, rtag);
         }
@@ -399,12 +413,12 @@ namespace boost { namespace lockfree {
 
         /** comparing semantics */
         /* @{ */
-        bool operator==(volatile tagged_ptr_pair const& p) const
+        bool operator==(volatile tagged_ptr_pair const& p) const noexcept
         {
             return (pair_ == p.pair_);
         }
 
-        bool operator!=(volatile tagged_ptr_pair const& p) const
+        bool operator!=(volatile tagged_ptr_pair const& p) const noexcept
         {
             return !operator==(p);
         }
@@ -412,17 +426,17 @@ namespace boost { namespace lockfree {
 
         /** pointer access */
         /* @{ */
-        Left* get_left_ptr() const volatile
+        Left* get_left_ptr() const volatile noexcept
         {
             return extract_left_ptr(pair_);
         }
 
-        Right* get_right_ptr() const volatile
+        Right* get_right_ptr() const volatile noexcept
         {
             return extract_right_ptr(pair_);
         }
 
-        void set_left_ptr(Left* lptr) volatile
+        void set_left_ptr(Left* lptr) volatile noexcept
         {
             Right* rptr = get_right_ptr();
             tag_t ltag = get_left_tag();
@@ -430,7 +444,7 @@ namespace boost { namespace lockfree {
             pack_ptr_pair(pair_, lptr, rptr, ltag, rtag);
         }
 
-        void set_right_ptr(Right* rptr) volatile
+        void set_right_ptr(Right* rptr) volatile noexcept
         {
             Left* lptr = get_left_ptr();
             tag_t ltag = get_left_tag();
@@ -441,18 +455,18 @@ namespace boost { namespace lockfree {
 
         /** tag access */
         /* @{ */
-        tag_t get_left_tag() const volatile
+        tag_t get_left_tag() const volatile noexcept
         {
             return extract_left_tag(pair_);
         }
 
-        tag_t get_right_tag() const volatile
+        tag_t get_right_tag() const volatile noexcept
         {
             return extract_right_tag(pair_);
         }
 
         template <typename Integral>
-        void set_left_tag(Integral ltag) volatile
+        void set_left_tag(Integral ltag) volatile noexcept
         {
             Left* lptr = get_left_ptr();
             Right* rptr = get_right_ptr();
@@ -461,7 +475,7 @@ namespace boost { namespace lockfree {
         }
 
         template <typename Integral>
-        void set_right_tag(Integral rtag) volatile
+        void set_right_tag(Integral rtag) volatile noexcept
         {
             Left* lptr = get_left_ptr();
             Right* rptr = get_right_ptr();
@@ -472,7 +486,7 @@ namespace boost { namespace lockfree {
 
         /** smart pointer support  */
         /* @{ */
-        operator bool() const
+        operator bool() const noexcept
         {
             return (get_left_ptr() != 0) && (get_right_ptr() != 0);
         }

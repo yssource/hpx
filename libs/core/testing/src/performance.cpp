@@ -44,6 +44,7 @@ namespace hpx { namespace util {
                 strm << "      \"executor\" : \"" << std::get<1>(item.first)
                      << "\",\n";
                 strm << "      \"series\" : [";
+                double average = 0.0;
                 int series = 0;
                 for (auto val : item.second)
                 {
@@ -51,8 +52,10 @@ namespace hpx { namespace util {
                         strm << ", ";
                     strm << val;
                     ++series;
+                    average += val;
                 }
-                strm << "]\n";
+                strm << "],\n";
+                strm << "      \"average\" : " << average / series << "\n";
                 strm << "    }";
                 ++outputs;
             }

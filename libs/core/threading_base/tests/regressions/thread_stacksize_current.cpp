@@ -65,7 +65,8 @@ int main(int argc, char** argv)
 {
     std::vector<std::string> schedulers = {"local", "local-priority-fifo",
         "local-priority-lifo", "static", "static-priority", "abp-priority-fifo",
-        "abp-priority-lifo", "shared-priority"};
+        "abp-priority-lifo", "shared-priority", "local-workrequesting-fifo",
+        "local-workrequesting-lifo"};
     for (auto const& scheduler : schedulers)
     {
         hpx::local::init_params iparams;

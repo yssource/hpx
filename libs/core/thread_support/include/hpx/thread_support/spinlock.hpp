@@ -30,7 +30,7 @@ namespace hpx { namespace util { namespace detail {
         HPX_CORE_EXPORT void yield_k(unsigned) noexcept;
 
     public:
-        spinlock() noexcept
+        HPX_FORCEINLINE spinlock() noexcept
           : m(false)
         {
         }
@@ -43,7 +43,7 @@ namespace hpx { namespace util { namespace detail {
                 !m.exchange(true, std::memory_order_acquire);
         }
 
-        void lock() noexcept
+        HPX_FORCEINLINE void lock() noexcept
         {
             // Wait for lock to be released without generating cache misses
             // Similar implementation to hpx::spinlock

@@ -1,4 +1,4 @@
-//  Copyright (c) 2018 Hartmut Kaiser
+//  Copyright (c) 2018-2022 Hartmut Kaiser
 //
 //  SPDX-License-Identifier: BSL-1.0
 //  Distributed under the Boost Software License, Version 1.0. (See accompanying
@@ -51,7 +51,7 @@ namespace hpx { namespace util {
         internal_allocator() = default;
 
         template <typename U>
-        explicit internal_allocator(internal_allocator<U> const&)
+        internal_allocator(internal_allocator<U> const&) noexcept
         {
         }
 
@@ -86,7 +86,7 @@ namespace hpx { namespace util {
             HPX_PP_CAT(HPX_HAVE_JEMALLOC_PREFIX, free)(p);
         }
 
-        size_type max_size() const noexcept
+        constexpr size_type max_size() const noexcept
         {
             return (std::numeric_limits<size_type>::max)() / sizeof(T);
         }
@@ -98,7 +98,7 @@ namespace hpx { namespace util {
         }
 
         template <typename U>
-        void destroy(U* p)
+        void destroy(U* p) noexcept
         {
             p->~U();
         }
@@ -106,14 +106,14 @@ namespace hpx { namespace util {
 
     template <typename T>
     constexpr bool operator==(
-        internal_allocator<T> const&, internal_allocator<T> const&)
+        internal_allocator<T> const&, internal_allocator<T> const&) noexcept
     {
         return true;
     }
 
     template <typename T>
     constexpr bool operator!=(
-        internal_allocator<T> const&, internal_allocator<T> const&)
+        internal_allocator<T> const&, internal_allocator<T> const&) noexcept
     {
         return false;
     }

@@ -16,13 +16,10 @@
 |hpx| thread scheduling policies
 ================================
 
-The HPX runtime has five thread scheduling policies: local-priority,
-static-priority, local, static and abp-priority. These policies can be specified
-from the command line using the command line option :option:`--hpx:queuing`. In
-order to use a particular scheduling policy, the runtime system must be built
-with the appropriate scheduler flag turned on (e.g. ``cmake
--DHPX_THREAD_SCHEDULERS=local``, see :ref:`cmake_variables` for more
-information).
+The HPX runtime has several thread scheduling policies: local-priority-fifo,
+local-priority-lifo, static-priority, local, static, local-workrequesting-fifo,
+local-workrequesting-lifo, and abp-priority. These policies can be specified
+from the command line using the command line option :option:`--hpx:queuing`. 
 
 Priority local scheduling policy (default policy)
 -------------------------------------------------
@@ -54,8 +51,6 @@ Static priority scheduling policy
 ---------------------------------
 
 * invoke using: :option:`--hpx:queuing`\ ``=static-priority`` (or ``-qs``)
-* flag to turn on for build: ``HPX_THREAD_SCHEDULERS=all`` or
-  ``HPX_THREAD_SCHEDULERS=static-priority``
 
 The static scheduling policy maintains one queue per OS thread from which each
 OS thread pulls its tasks (user threads). Threads are distributed in a round
@@ -65,8 +60,6 @@ Local scheduling policy
 -----------------------
 
 * invoke using: :option:`--hpx:queuing`\ ``=local`` (or ``-ql``)
-* flag to turn on for build: ``HPX_THREAD_SCHEDULERS=all`` or
-  ``HPX_THREAD_SCHEDULERS=local``
 
 The local scheduling policy maintains one queue per OS thread from which each OS
 thread pulls its tasks (user threads).
@@ -75,8 +68,6 @@ Static scheduling policy
 ------------------------
 
 * invoke using: :option:`--hpx:queuing`\ ``=static``
-* flag to turn on for build: ``HPX_THREAD_SCHEDULERS=all`` or
-  ``HPX_THREAD_SCHEDULERS=static``
 
 The static scheduling policy maintains one queue per OS thread from which each
 OS thread pulls its tasks (user threads). Threads are distributed in a round
@@ -86,8 +77,6 @@ Priority ABP scheduling policy
 ------------------------------
 
 * invoke using: :option:`--hpx:queuing`\ ``=abp-priority-fifo``
-* flag to turn on for build: ``HPX_THREAD_SCHEDULERS=all`` or
-  ``HPX_THREAD_SCHEDULERS=abp-priority``
 
 Priority ABP policy maintains a double ended lock free queue for each OS thread.
 By default the number of high priority queues is equal to the number of OS
@@ -152,6 +141,23 @@ policy use the command line option :option:`--hpx:queuing`\
     enum { max_thread_count = 1000 };
 
     I see both FIFO and double ended queues in ABP policies?
+
+Work requesting scheduling policies
+-----------------------------------
+
+* invoke using: :option:`--hpx:queuing`\ ``=local-workrequesting-fifo``
+  or using :option:`--hpx:queuing`\ ``=local-workrequesting-lifo``
+
+The work-requesting policies rely on a different mechanism of balancing work
+between cores (compared to the other policies listed above). Instead of actively
+trying to steal work from other cores, requesting work relies on a less
+disruptive mechanism. If a core runs out of work, instead of actively looking at
+the queues of neighboring cores, in this case a request is posted to another
+core. This core now (whenever it is not busy with other work) either responds to
+the original core by sending back work or passes the request on to the next
+possible core in the system. In general, this scheme avoids contention on the
+work queues as those are always accessed by their own cores only.
+
 
 The |hpx| resource partitioner
 ==============================

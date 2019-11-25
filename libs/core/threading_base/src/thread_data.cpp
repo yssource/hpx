@@ -50,6 +50,16 @@ namespace hpx { namespace threads {
       : detail::thread_data_reference_counting(addref)
       , current_state_(thread_state(
             init_data.initial_state, thread_restart_state::signaled))
+      , priority_(init_data.priority)
+      , stacksize_enum_(init_data.stacksize)
+      , requested_interrupt_(false)
+      , enabled_interrupt_(true)
+      , ran_exit_funcs_(false)
+      , is_stackless_(is_stackless)
+      , last_worker_thread_num_(std::uint16_t(-1))
+      , scheduler_base_(init_data.scheduler_base)
+      , queue_(queue)
+      , stacksize_(stacksize)
 #ifdef HPX_HAVE_THREAD_DESCRIPTION
       , description_(init_data.description)
       , lco_description_()
@@ -65,16 +75,6 @@ namespace hpx { namespace threads {
 #ifdef HPX_HAVE_THREAD_BACKTRACE_ON_SUSPENSION
       , backtrace_(nullptr)
 #endif
-      , priority_(init_data.priority)
-      , requested_interrupt_(false)
-      , enabled_interrupt_(true)
-      , ran_exit_funcs_(false)
-      , is_stackless_(is_stackless)
-      , scheduler_base_(init_data.scheduler_base)
-      , last_worker_thread_num_(std::size_t(-1))
-      , stacksize_(stacksize)
-      , stacksize_enum_(init_data.stacksize)
-      , queue_(queue)
     {
         LTM_(debug).format(
             "thread::thread({}), description({})", this, get_description());
@@ -104,7 +104,9 @@ namespace hpx { namespace threads {
     thread_data::~thread_data()
     {
         LTM_(debug).format("thread_data::~thread_data({})", this);
-        free_thread_exit_callbacks();
+
+        // Exit functions should have been executed.
+        HPX_ASSERT(exit_funcs_.empty() || ran_exit_funcs_);
     }
 
     void thread_data::destroy_thread()
@@ -132,7 +134,11 @@ namespace hpx { namespace threads {
             }
             exit_funcs_.pop_front();
         }
+
         ran_exit_funcs_ = true;
+
+        // clear all exit functions now as they are not needed anymore
+        exit_funcs_.clear();
     }
 
     bool thread_data::add_thread_exit_callback(hpx::function<void()> const& f)
@@ -149,17 +155,6 @@ namespace hpx { namespace threads {
         exit_funcs_.push_front(f);
 
         return true;
-    }
-
-    void thread_data::free_thread_exit_callbacks()
-    {
-        std::lock_guard<hpx::util::detail::spinlock> l(
-            spinlock_pool::spinlock_for(this));
-
-        // Exit functions should have been executed.
-        HPX_ASSERT(exit_funcs_.empty() || ran_exit_funcs_);
-
-        exit_funcs_.clear();
     }
 
     bool thread_data::interruption_point(bool throw_on_interrupt)
@@ -194,8 +189,6 @@ namespace hpx { namespace threads {
             "thread_data::rebind_base({}), description({}), phase({}), rebind",
             this, get_description(), get_thread_phase());
 
-        free_thread_exit_callbacks();
-
         current_state_.store(thread_state(
             init_data.initial_state, thread_restart_state::signaled));
 
@@ -220,7 +213,7 @@ namespace hpx { namespace threads {
         ran_exit_funcs_ = false;
         exit_funcs_.clear();
         scheduler_base_ = init_data.scheduler_base;
-        last_worker_thread_num_ = std::size_t(-1);
+        last_worker_thread_num_ = std::uint16_t(-1);
 
         // We explicitly set the logical stack size again as it can be different
         // from what the previous use required. However, the physical stack size

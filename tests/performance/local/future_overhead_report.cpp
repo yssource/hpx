@@ -85,10 +85,11 @@ void measure_function_futures_create_thread_hierarchical_placement(
                 hpx::threads::policies::scheduler_mode::
                     steal_high_priority_first);
     }
-    auto const desc = hpx::util::thread_description();
+
+    auto desc = hpx::util::thread_description();
     auto prio = hpx::threads::thread_priority::normal;
-    auto const stack_size = hpx::threads::thread_stacksize::small_;
-    auto const num_threads = hpx::get_num_worker_threads();
+    auto stack_size = hpx::threads::thread_stacksize::small_;
+    auto num_threads = hpx::get_num_worker_threads();
     hpx::error_code ec;
 
     hpx::util::perftests_report(
@@ -108,7 +109,7 @@ void measure_function_futures_create_thread_hierarchical_placement(
                 auto const hint = hpx::threads::thread_schedule_hint(
                     static_cast<std::int16_t>(t));
                 auto spawn_func = [&thread_func, sched, hint, t, count,
-                                      num_threads, desc, prio]() {
+                                      num_threads, desc, prio, stack_size]() {
                     std::uint64_t const count_start = t * count / num_threads;
                     std::uint64_t const count_end =
                         (t + 1) * count / num_threads;

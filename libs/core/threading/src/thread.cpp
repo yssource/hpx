@@ -110,7 +110,6 @@ namespace hpx {
                 "null thread id encountered");
         }
         threads::run_thread_exit_callbacks(id);
-        threads::free_thread_exit_callbacks(id);
     }
 
     threads::thread_result_type thread::thread_function_nullary(
