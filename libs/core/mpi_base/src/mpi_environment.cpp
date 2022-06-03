@@ -8,6 +8,7 @@
 
 #include <hpx/config.hpp>
 
+#include <hpx/modules/format.hpp>
 #include <hpx/modules/logging.hpp>
 #include <hpx/modules/mpi_base.hpp>
 #include <hpx/modules/runtime_configuration.hpp>
@@ -17,6 +18,7 @@
 
 #include <cstddef>
 #include <cstdlib>
+#include <map>
 #include <string>
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -131,9 +133,17 @@ namespace hpx { namespace util {
 
             if (provided < minimal)
             {
+                std::map<int, char const*> levels = {
+                    {MPI_THREAD_SINGLE, "MPI_THREAD_SINGLE"},
+                    {MPI_THREAD_FUNNELED, "MPI_THREAD_FUNNELED"},
+                    {MPI_THREAD_SERIALIZED, "MPI_THREAD_SERIALIZED"},
+                    {MPI_THREAD_MULTIPLE, "MPI_THREAD_MULTIPLE"}};
+
                 HPX_THROW_EXCEPTION(invalid_status,
                     "hpx::util::mpi_environment::init",
-                    "MPI doesn't provide minimal requested thread level");
+                    hpx::util::format("MPI doesn't implement minimal requested "
+                                      "thread level, required {}, provided {}",
+                        levels[required], levels[provided]));
             }
             has_called_init_ = true;
         }
@@ -165,7 +175,7 @@ namespace hpx { namespace util {
         required =
             (get_entry_as(rtcfg, "hpx.parcel.mpi.multithreaded", 1) != 0) ?
             MPI_THREAD_MULTIPLE :
-            MPI_THREAD_SINGLE;
+            MPI_THREAD_SERIALIZED;
 
 #if defined(MVAPICH2_VERSION) && defined(_POSIX_SOURCE)
         // This enables multi threading support in MVAPICH2 if requested.
@@ -178,7 +188,6 @@ namespace hpx { namespace util {
         if (required == MPI_THREAD_MULTIPLE)
             setenv("MPICH_MAX_THREAD_SAFETY", "multiple", 1);
 #endif
-
 #endif
 
         int retval =
@@ -206,18 +215,18 @@ namespace hpx { namespace util {
         {
             // explicitly disable mpi if not run by mpirun
             rtcfg.add_entry("hpx.parcel.mpi.multithreaded", "0");
-        }
 
-        if (provided_threading_flag_ == MPI_THREAD_FUNNELED)
-        {
-            enabled_ = false;
-            has_called_init_ = false;
-            throw std::runtime_error(
-                "mpi_environment::init: MPI_Init_thread: "
-                "The underlying MPI implementation only supports "
-                "MPI_THREAD_FUNNELED. This mode is not supported by HPX. "
-                "Please pass -Ihpx.parcel.mpi.multithreaded=0 to explicitly "
-                "disable MPI multi-threading.");
+            if (provided_threading_flag_ == MPI_THREAD_FUNNELED)
+            {
+                enabled_ = false;
+                has_called_init_ = false;
+                throw std::runtime_error(
+                    "mpi_environment::init: MPI_Init_thread: "
+                    "The underlying MPI implementation only supports "
+                    "MPI_THREAD_FUNNELED. This mode is not supported by HPX. "
+                    "Please pass -Ihpx.parcel.mpi.multithreaded=0 to "
+                    "explicitly disable MPI multi-threading.");
+            }
         }
 
         this_rank = rank();
