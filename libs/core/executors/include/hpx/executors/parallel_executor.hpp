@@ -19,6 +19,7 @@
 #include <hpx/execution/executors/execution_parameters.hpp>
 #include <hpx/execution/executors/fused_bulk_execute.hpp>
 #include <hpx/execution/executors/static_chunk_size.hpp>
+#include <hpx/execution_base/execution.hpp>
 #include <hpx/execution_base/traits/is_executor.hpp>
 #include <hpx/executors/detail/hierarchical_spawning.hpp>
 #include <hpx/functional/bind_back.hpp>
@@ -155,6 +156,7 @@ namespace hpx { namespace execution {
         {
         }
 
+    private:
         // property implementations
         friend constexpr parallel_policy_executor tag_invoke(
             hpx::execution::experimental::with_hint_t,
@@ -253,6 +255,7 @@ namespace hpx { namespace execution {
             return exec.get_num_cores();
         }
 
+    public:
         /// \cond NOINTERNAL
         constexpr bool operator==(
             parallel_policy_executor const& rhs) const noexcept
@@ -273,52 +276,57 @@ namespace hpx { namespace execution {
         }
         /// \endcond
 
+    private:
         /// \cond NOINTERNAL
 
         // OneWayExecutor interface
         template <typename F, typename... Ts>
-        typename hpx::util::detail::invoke_deferred_result<F, Ts...>::type
-        sync_execute(F&& f, Ts&&... ts) const
+        friend decltype(auto) tag_invoke(
+            hpx::parallel::execution::sync_execute_t,
+            parallel_policy_executor const& exec, F&& f, Ts&&... ts)
         {
-            hpx::scoped_annotation annotate(annotation_ ?
-                    annotation_ :
+            hpx::scoped_annotation annotate(exec.annotation_ ?
+                    exec.annotation_ :
                     "parallel_policy_executor::sync_execute");
+
             return hpx::detail::sync_launch_policy_dispatch<Policy>::call(
                 launch::sync, HPX_FORWARD(F, f), HPX_FORWARD(Ts, ts)...);
         }
 
         // TwoWayExecutor interface
         template <typename F, typename... Ts>
-        hpx::future<
-            typename hpx::util::detail::invoke_deferred_result<F, Ts...>::type>
-        async_execute(F&& f, Ts&&... ts) const
+        friend decltype(auto) tag_invoke(
+            hpx::parallel::execution::async_execute_t,
+            parallel_policy_executor const& exec, F&& f, Ts&&... ts)
         {
-            hpx::util::thread_description desc(f, annotation_);
-            auto pool =
-                pool_ ? pool_ : threads::detail::get_self_or_default_pool();
+            hpx::util::thread_description desc(f, exec.annotation_);
+            auto pool = exec.pool_ ?
+                exec.pool_ :
+                threads::detail::get_self_or_default_pool();
 
             return hpx::detail::async_launch_policy_dispatch<Policy>::call(
-                policy_, desc, pool, HPX_FORWARD(F, f), HPX_FORWARD(Ts, ts)...);
+                exec.policy_, desc, pool, HPX_FORWARD(F, f),
+                HPX_FORWARD(Ts, ts)...);
         }
 
         template <typename F, typename Future, typename... Ts>
-        HPX_FORCEINLINE
-            hpx::future<typename hpx::util::detail::invoke_deferred_result<F,
-                Future, Ts...>::type>
-            then_execute(F&& f, Future&& predecessor, Ts&&... ts) const
+        friend decltype(auto) tag_invoke(
+            hpx::parallel::execution::then_execute_t,
+            parallel_policy_executor const& exec, F&& f, Future&& predecessor,
+            Ts&&... ts)
         {
             using result_type =
-                typename hpx::util::detail::invoke_deferred_result<F, Future,
-                    Ts...>::type;
+                hpx::util::detail::invoke_deferred_result_t<F, Future, Ts...>;
 
             auto&& func = hpx::util::one_shot(hpx::bind_back(
-                hpx::annotated_function(HPX_FORWARD(F, f), annotation_),
+                hpx::annotated_function(HPX_FORWARD(F, f), exec.annotation_),
                 HPX_FORWARD(Ts, ts)...));
 
-            typename hpx::traits::detail::shared_state_ptr<result_type>::type
-                p = lcos::detail::make_continuation_alloc_nounwrap<result_type>(
+            hpx::traits::detail::shared_state_ptr_t<result_type> p =
+                lcos::detail::make_continuation_alloc_nounwrap<result_type>(
                     hpx::util::internal_allocator<>{},
-                    HPX_FORWARD(Future, predecessor), policy_, HPX_MOVE(func));
+                    HPX_FORWARD(Future, predecessor), exec.policy_,
+                    HPX_MOVE(func));
 
             return hpx::traits::future_access<hpx::future<result_type>>::create(
                 HPX_MOVE(p));
@@ -335,28 +343,51 @@ namespace hpx { namespace execution {
                 policy_, desc, pool, HPX_FORWARD(F, f), HPX_FORWARD(Ts, ts)...);
         }
 
-        // BulkTwoWayExecutor interface
-        template <typename F, typename S, typename... Ts>
-        decltype(auto) bulk_async_execute(
-            F&& f, S const& shape, Ts&&... ts) const
+        template <typename F, typename... Ts>
+        friend void tag_invoke(hpx::parallel::execution::post_t,
+            parallel_policy_executor const& exec, F&& f, Ts&&... ts)
         {
-            hpx::util::thread_description desc(f, annotation_);
-            auto pool =
-                pool_ ? pool_ : threads::detail::get_self_or_default_pool();
-            return parallel::execution::detail::hierarchical_bulk_async_execute(
-                desc, pool, 0, get_num_cores(), hierarchical_threshold_,
-                policy_, HPX_FORWARD(F, f), shape, HPX_FORWARD(Ts, ts)...);
+            exec.post(HPX_FORWARD(F, f), HPX_FORWARD(Ts, ts)...);
         }
 
-        template <typename F, typename S, typename Future, typename... Ts>
-        hpx::future<typename parallel::execution::detail::
-                bulk_then_execute_result<F, S, Future, Ts...>::type>
-        bulk_then_execute(
-            F&& f, S const& shape, Future&& predecessor, Ts&&... ts)
+        // BulkTwoWayExecutor interface
+        // clang-format off
+        template <typename F, typename S, typename... Ts,
+            HPX_CONCEPT_REQUIRES_(
+                !std::is_integral_v<S>
+            )>
+        // clang-format on
+        friend decltype(auto) tag_invoke(
+            hpx::parallel::execution::bulk_async_execute_t,
+            parallel_policy_executor const& exec, F&& f, S const& shape,
+            Ts&&... ts)
+        {
+            hpx::util::thread_description desc(f, exec.annotation_);
+            auto pool = exec.pool_ ?
+                exec.pool_ :
+                threads::detail::get_self_or_default_pool();
+
+            return parallel::execution::detail::hierarchical_bulk_async_execute(
+                desc, pool, 0, exec.get_num_cores(),
+                exec.hierarchical_threshold_, exec.policy_, HPX_FORWARD(F, f),
+                shape, HPX_FORWARD(Ts, ts)...);
+        }
+
+        // clang-format off
+        template <typename F, typename S, typename Future, typename... Ts,
+            HPX_CONCEPT_REQUIRES_(
+                !std::is_integral_v<S>
+            )>
+        // clang-format on
+        friend decltype(auto) tag_invoke(
+            hpx::parallel::execution::bulk_then_execute_t,
+            parallel_policy_executor const& exec, F&& f, S const& shape,
+            Future&& predecessor, Ts&&... ts)
         {
             return parallel::execution::detail::
-                hierarchical_bulk_then_execute_helper(*this, policy_,
-                    hpx::annotated_function(HPX_FORWARD(F, f), annotation_),
+                hierarchical_bulk_then_execute_helper(exec, exec.policy_,
+                    hpx::annotated_function(
+                        HPX_FORWARD(F, f), exec.annotation_),
                     shape, HPX_FORWARD(Future, predecessor),
                     HPX_FORWARD(Ts, ts)...);
         }
@@ -405,6 +436,12 @@ namespace hpx { namespace parallel { namespace execution {
     template <typename Policy>
     struct is_one_way_executor<hpx::execution::parallel_policy_executor<Policy>>
       : std::true_type
+    {
+    };
+
+    template <typename Policy>
+    struct is_never_blocking_one_way_executor<
+        hpx::execution::parallel_policy_executor<Policy>> : std::true_type
     {
     };
 
